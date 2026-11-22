@@ -22,6 +22,48 @@ def pick(frame, boxes, ref, embedder, sim_thresh):
     return boxes[best] if sims[best] >= sim_thresh else None
 
 
+def track(frames, prompt, detector, tracker, embedder, score_thresh=0.5, area_jump=2.0,
+          sim_thresh=0.85, redetect_every=5, redetect=True):
+    tracker.reset()
+    rows, vis = [], []
+    prev_area, lost, ref, misses = 0, True, None, 0
+    for idx, frame in enumerate(frames):
+        mask, score = tracker.step(idx, frame)
+        lost = is_lost(mask, score, prev_area, score_thresh, area_jump)
+        new_box = None
+        # redetect when sam2 is lost
+        searching = not tracker.started or redetect
+        if lost and searching and misses % redetect_every == 0:
+            boxes, _ = detector(frame, prompt)
+            new_box = pick(frame, boxes, ref, embedder, sim_thresh)
+            if new_box is not None:
+                if ref is None:
+                    ref = embedder(frame, new_box)
+                # drop old memory
+                tracker.reset()
+                mask, score = tracker.step(idx, frame, new_box)
+                lost = is_lost(mask, score, 0, score_thresh, area_jump)
+        prev_area = 0 if mask is None else int((mask > 0).sum())
+        misses = misses + 1 if lost else 0
+        if lost:
+            mask = None
+        box = mask_to_box(mask)
+        rows.append([idx, score, int(lost), int(new_box is not None)] + (box or ["", "", "", ""]))
+        vis.append(draw(frame, mask, box, lost))
+    return rows, vis
+
+
+def save(rows, vis, fps, out_dir, name):
+    os.makedirs(out_dir, exist_ok=True)
+    video_path = os.path.join(out_dir, f"{name}_tracked.mp4")
+    write_video(video_path, vis, fps)
+    with open(os.path.join(out_dir, f"{name}_boxes.csv"), "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["frame", "score", "lost", "reinit", "x1", "y1", "x2", "y2"])
+        writer.writerows(rows)
+    return video_path
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--video", required=True)
@@ -39,42 +81,14 @@ def main():
     tracker = Tracker(device)
     embedder = Embedder(device)
     frames, fps = read_frames(args.video)
-    os.makedirs(args.out, exist_ok=True)
 
-    rows, vis = [], []
-    prev_area, lost, ref, misses = 0, True, None, 0
     start = time.time()
-    for idx, frame in enumerate(frames):
-        mask, score = tracker.step(idx, frame)
-        lost = is_lost(mask, score, prev_area, args.score_thresh, args.area_jump)
-        new_box = None
-        # redetect when sam2 is lost
-        searching = not tracker.started or not args.no_redetect
-        if lost and searching and misses % args.redetect_every == 0:
-            boxes, _ = detector(frame, args.prompt)
-            new_box = pick(frame, boxes, ref, embedder, args.sim_thresh)
-            if new_box is not None:
-                if ref is None:
-                    ref = embedder(frame, new_box)
-                # drop old memory
-                tracker.reset()
-                mask, score = tracker.step(idx, frame, new_box)
-                lost = is_lost(mask, score, 0, args.score_thresh, args.area_jump)
-        prev_area = 0 if mask is None else int((mask > 0).sum())
-        misses = misses + 1 if lost else 0
-        if lost:
-            mask = None
-        box = mask_to_box(mask)
-        rows.append([idx, score, int(lost), int(new_box is not None)] + (box or ["", "", "", ""]))
-        vis.append(draw(frame, mask, box, lost))
+    rows, vis = track(frames, args.prompt, detector, tracker, embedder, args.score_thresh,
+                      args.area_jump, args.sim_thresh, args.redetect_every, not args.no_redetect)
     elapsed = time.time() - start
 
     name = os.path.splitext(os.path.basename(args.video))[0]
-    write_video(os.path.join(args.out, f"{name}_tracked.mp4"), vis, fps)
-    with open(os.path.join(args.out, f"{name}_boxes.csv"), "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["frame", "score", "lost", "reinit", "x1", "y1", "x2", "y2"])
-        writer.writerows(rows)
+    save(rows, vis, fps, args.out, name)
     print(f"{len(frames)} frames {len(frames) / elapsed:.2f} fps on {device}")
 
 
