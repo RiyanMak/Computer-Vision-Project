@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 
 def read_frames(path):
@@ -20,3 +21,12 @@ def write_video(path, frames, fps):
     for frame in frames:
         out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
     out.release()
+
+
+def draw(frame, mask, box):
+    out = frame.copy()
+    if mask is not None:
+        out[mask > 0] = (0.5 * out[mask > 0] + 0.5 * np.array([0, 255, 0])).astype(np.uint8)
+    if box is not None:
+        cv2.rectangle(out, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+    return out
