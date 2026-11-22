@@ -1,3 +1,5 @@
+import subprocess
+
 import cv2
 import numpy as np
 
@@ -17,10 +19,15 @@ def read_frames(path):
 
 def write_video(path, frames, fps):
     h, w = frames[0].shape[:2]
-    out = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
+    # h264 so browsers can play it
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
+           "-s", f"{w}x{h}", "-r", str(fps), "-i", "-", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+           "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", path]
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     for frame in frames:
-        out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-    out.release()
+        proc.stdin.write(np.ascontiguousarray(frame).tobytes())
+    proc.stdin.close()
+    proc.wait()
 
 
 def draw(frame, mask, box, lost=False):
