@@ -11,9 +11,9 @@ class Detector:
         self.model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
 
     @torch.no_grad()
-    def __call__(self, frame, prompt, box_thresh=0.35, text_thresh=0.25):
+    def __call__(self, frame, prompt, box_thresh=0.35, text_thresh=0.25, max_frac=0.9):
         image = Image.fromarray(frame)
-        # dino expects lowercase text ending in a period
+        # dino prompt format
         text = prompt.lower().strip().rstrip(".") + "."
         inputs = self.processor(images=image, text=text, return_tensors="pt").to(self.device)
         outputs = self.model(**inputs)
@@ -26,5 +26,10 @@ class Detector:
         )[0]
         boxes = res["boxes"].cpu().numpy()
         scores = res["scores"].cpu().numpy()
+        # drop whole frame boxes
+        h, w = frame.shape[:2]
+        areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+        keep = areas < max_frac * h * w
+        boxes, scores = boxes[keep], scores[keep]
         order = np.argsort(-scores)
         return boxes[order], scores[order]
