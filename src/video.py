@@ -23,10 +23,12 @@ def write_video(path, frames, fps):
     out.release()
 
 
-def draw(frame, mask, box):
+def draw(frame, mask, box, lost=False):
     out = frame.copy()
     if mask is not None:
         out[mask > 0] = (0.5 * out[mask > 0] + 0.5 * np.array([0, 255, 0])).astype(np.uint8)
     if box is not None:
         cv2.rectangle(out, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+    if lost:
+        cv2.putText(out, "lost", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
     return out

@@ -39,3 +39,11 @@ def mask_to_box(mask):
     if len(xs) == 0:
         return None
     return [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())]
+
+
+def is_lost(mask, score, prev_area, score_thresh=0.5, area_jump=2.0):
+    area = 0 if mask is None else int((mask > 0).sum())
+    if score < score_thresh or area == 0:
+        return True
+    # big size change from last good frame means the mask likely jumped
+    return prev_area > 0 and not (1 / area_jump <= area / prev_area <= area_jump)
