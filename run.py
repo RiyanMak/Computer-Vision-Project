@@ -31,9 +31,9 @@ def track(frames, prompt, detector, tracker, embedder, score_thresh=0.5, area_ju
         mask, score = tracker.step(idx, frame)
         lost = is_lost(mask, score, prev_area, score_thresh, area_jump)
         new_box = None
-        # redetect when sam2 is lost
-        searching = not tracker.started or redetect
-        if lost and searching and misses % redetect_every == 0:
+        # give sam2 a few frames to recover first
+        due = not tracker.started or (redetect and misses > 0)
+        if lost and due and misses % redetect_every == 0:
             boxes, _ = detector(frame, prompt)
             new_box = pick(frame, boxes, ref, embedder, sim_thresh)
             if new_box is not None:
