@@ -45,5 +45,5 @@ def is_lost(mask, score, prev_area, score_thresh=0.5, area_jump=2.0):
     area = 0 if mask is None else int((mask > 0).sum())
     if score < score_thresh or area == 0:
         return True
-    # big size change from last good frame means the mask likely jumped
+    # big size change from last frame means the mask likely jumped
     return prev_area > 0 and not (1 / area_jump <= area / prev_area <= area_jump)

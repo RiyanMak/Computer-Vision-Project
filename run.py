@@ -37,10 +37,9 @@ def main():
                 init_box = boxes[0]
         mask, score = tracker.step(idx, frame, init_box)
         lost = is_lost(mask, score, prev_area, args.score_thresh, args.area_jump)
+        prev_area = 0 if mask is None else int((mask > 0).sum())
         if lost:
             mask = None
-        else:
-            prev_area = int((mask > 0).sum())
         box = mask_to_box(mask)
         rows.append([idx, score, int(lost)] + (box or ["", "", "", ""]))
         vis.append(draw(frame, mask, box, lost))
