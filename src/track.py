@@ -8,8 +8,11 @@ class Tracker:
         self.device = device
         self.processor = Sam2VideoProcessor.from_pretrained(model_id)
         self.model = Sam2VideoModel.from_pretrained(model_id).to(device)
-        # streaming session so frames are fed one at a time
-        self.session = self.processor.init_video_session(inference_device=device)
+        self.reset()
+
+    def reset(self):
+        # streaming session
+        self.session = self.processor.init_video_session(inference_device=self.device)
         self.started = False
 
     @torch.no_grad()
@@ -45,5 +48,5 @@ def is_lost(mask, score, prev_area, score_thresh=0.5, area_jump=2.0):
     area = 0 if mask is None else int((mask > 0).sum())
     if score < score_thresh or area == 0:
         return True
-    # big size change from last frame means the mask likely jumped
+    # sudden size change
     return prev_area > 0 and not (1 / area_jump <= area / prev_area <= area_jump)
