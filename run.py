@@ -74,12 +74,13 @@ def main():
     parser.add_argument("--sim-thresh", type=float, default=0.85)
     parser.add_argument("--redetect-every", type=int, default=5)
     parser.add_argument("--no-redetect", action="store_true")
+    parser.add_argument("--head", help="trained appearance head")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     detector = Detector(device)
     tracker = Tracker(device)
-    embedder = Embedder(device)
+    embedder = Embedder(device, head=args.head)
     frames, fps = read_frames(args.video)
 
     start = time.time()
