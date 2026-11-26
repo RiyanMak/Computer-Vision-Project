@@ -60,3 +60,18 @@ Runs the baseline and the full system on every clip in `data/clips.csv` and writ
 - recovered: reappearances where the target is found again within 30 frames
 - id_switches: times the output moves from the target to something else
 - false_pos: annotated frames with a box that does not touch the target
+
+## Appearance training on Basketball-51
+
+Basketball-51 has no boxes, so training uses pseudo tracks. Grounding DINO finds players on sampled frames, boxes are linked by IoU into tracks, and crops of the same track are positives while other players in the clip are negatives. CLIP stays frozen and only a small head on its image features is trained. Whole games are held out for validation.
+
+```
+pip install kagglehub
+python -c "import kagglehub; print(kagglehub.dataset_download('sarbagyashakya/basketball-51-dataset'))"
+python b51.py --root "<download>/Basketball_51 dataset" --out outputs/b51 --train-clips 120 --val-clips 40 --stride 6 --min-crops 3
+python train.py --data outputs/b51 --out outputs/b51/head.pt
+```
+
+`train.py` prints val retrieval accuracy (the last crop of each track matched back to the first crop among all tracks in its clip) for plain CLIP and for the head.
+
+Use the head in tracking or eval with `--head outputs/b51/head.pt`. Its similarities are on a different scale than plain CLIP, so set `--sim-thresh` to match.
