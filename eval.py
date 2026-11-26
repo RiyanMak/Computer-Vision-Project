@@ -61,12 +61,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default="data")
     parser.add_argument("--out", default="outputs/eval")
+    parser.add_argument("--head", help="trained appearance head")
+    parser.add_argument("--sim-thresh", type=float, default=0.85)
+    parser.add_argument("--methods", default="baseline,ours")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     detector = Detector(device)
     tracker = Tracker(device)
-    embedder = Embedder(device)
+    embedder = Embedder(device, head=args.head)
 
     with open(os.path.join(args.data, "clips.csv")) as f:
         clips = list(csv.DictReader(f))
@@ -74,9 +77,11 @@ def main():
     for clip in clips:
         frames, fps = read_frames(os.path.join(args.data, clip["clip"] + ".mp4"))
         gt = load_gt(os.path.join(args.data, clip["clip"] + ".csv"))
-        for method, redetect in (("baseline", False), ("ours", True)):
+        for method in args.methods.split(","):
+            redetect = method != "baseline"
             start = time.time()
-            rows, vis = track(frames, clip["prompt"], detector, tracker, embedder, redetect=redetect)
+            rows, vis = track(frames, clip["prompt"], detector, tracker, embedder, sim_thresh=args.sim_thresh,
+                              redetect=redetect)
             res = {"clip": clip["clip"], "method": method, "fps": len(frames) / (time.time() - start)}
             res.update(score(gt, rows))
             save(rows, vis, fps, os.path.join(args.out, method), clip["clip"])
