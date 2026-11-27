@@ -74,4 +74,4 @@ python train.py --data outputs/b51 --out outputs/b51/head.pt
 
 `train.py` prints val retrieval accuracy (the last crop of each track matched back to the first crop among all tracks in its clip) for plain CLIP and for the head.
 
-Use the head in tracking or eval with `--head outputs/b51/head.pt`. Its similarities are on a different scale than plain CLIP, so set `--sim-thresh` to match.
+Use the head in tracking or eval with `--head outputs/b51/head.pt`. Its similarities are on a different scale than plain CLIP, so set `--sim-thresh` to match. On held-out games 0.49 with the head keeps the same share of true matches as 0.85 with plain CLIP.
