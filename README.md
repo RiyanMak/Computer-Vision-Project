@@ -38,6 +38,12 @@ Label a recorded clip every 10 frames:
 python label.py --video data/backpack.mp4 --out data/backpack.csv
 ```
 
+Or label in CVAT, export as CVAT for video 1.1, run Alen's `cvat_conversion.py` on the xml and convert its `<clip>_gt.csv` (mark the target outside in CVAT when it is fully hidden or out of view):
+
+```
+python cvat.py --gt annotations/backpack_gt.csv --clip backpack --prompt "the red backpack"
+```
+
 Get a 200 frame LaSOT test clip with its description and boxes:
 
 ```
